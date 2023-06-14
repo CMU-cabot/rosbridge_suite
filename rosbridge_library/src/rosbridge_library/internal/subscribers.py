@@ -34,7 +34,8 @@
 from threading import Lock, RLock
 
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from rclpy.qos import DurabilityPolicy, QoSPolicyKind, QoSProfile, ReliabilityPolicy
+from rclpy.qos_overriding_options import QoSOverridingOptions
 from rosbridge_library.internal import ros_loader
 from rosbridge_library.internal.message_conversion import msg_class_type_repr
 from rosbridge_library.internal.outgoing_message import OutgoingMessage
@@ -132,11 +133,27 @@ class MultiSubscriber:
         self.raw = raw
         self.callback_group = MutuallyExclusiveCallbackGroup()
 
+        node_handle.get_logger().info("create_subscription")
+
         self.subscriber = node_handle.create_subscription(
-            msg_class, topic, self.callback, qos, raw=raw, callback_group=self.callback_group
+            msg_class, topic, self.callback, qos, raw=raw, callback_group=self.callback_group,
+            qos_overriding_options=QoSOverridingOptions(
+                [QoSPolicyKind.RELIABILITY, QoSPolicyKind.DURABILITY, QoSPolicyKind.DEPTH],
+                callback=self._qos_callback
+            )
         )
         self.new_subscriber = None
         self.new_subscriptions = {}
+
+    def _qos_callback(self, qos):
+        self.node_handle.get_logger().info(F"Subscription QoS: {qos}")
+
+        class result:
+            def __init__(self, successful=True, reason=None):
+                self.successful = successful
+                self.reason = reason
+
+        return result()
 
     def unregister(self):
         self.node_handle.destroy_subscription(self.subscriber)
@@ -177,6 +194,7 @@ class MultiSubscriber:
             # which adds the new callback to the subscriptions dictionary.
             self.new_subscriptions.update({client_id: callback})
             if self.new_subscriber is None:
+                self.node_handle.get_logger().info("create_subscription")
                 self.new_subscriber = self.node_handle.create_subscription(
                     self.msg_class,
                     self.topic,
@@ -184,6 +202,10 @@ class MultiSubscriber:
                     self.qos,
                     raw=self.raw,
                     callback_group=self.callback_group,
+                    qos_overriding_options=QoSOverridingOptions(
+                        [QoSPolicyKind.RELIABILITY, QoSPolicyKind.DURABILITY, QoSPolicyKind.DEPTH],
+                        callback=self._qos_callback
+                    )
                 )
 
     def unsubscribe(self, client_id):
