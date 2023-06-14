@@ -34,7 +34,8 @@
 from threading import Timer
 
 from rclpy.duration import Duration
-from rclpy.qos import DurabilityPolicy, QoSProfile
+from rclpy.qos import DurabilityPolicy, QoSPolicyKind, QoSProfile
+from rclpy.qos_overriding_options import QoSOverridingOptions
 from rosbridge_library.internal import message_conversion, ros_loader
 from rosbridge_library.internal.message_conversion import msg_class_type_repr
 from rosbridge_library.internal.topics import (
@@ -116,7 +117,23 @@ class MultiPublisher:
         else:
             publisher_qos.depth = 1
 
-        self.publisher = node_handle.create_publisher(msg_class, topic, qos_profile=publisher_qos)
+        self.publisher = node_handle.create_publisher(
+            msg_class, topic, qos_profile=publisher_qos,
+            qos_overriding_options=QoSOverridingOptions(
+                [QoSPolicyKind.RELIABILITY, QoSPolicyKind.DURABILITY, QoSPolicyKind.DEPTH],
+                callback=self._qos_callback
+            )
+        )
+
+    def _qos_callback(self, qos):
+        self.node_handle.get_logger().info(F"Publisher QoS: {qos}")
+
+        class result:
+            def __init__(self, successful=True, reason=None):
+                self.successful = successful
+                self.reason = reason
+
+        return result()
 
     def unregister(self):
         """Unregisters the publisher and clears the clients"""
