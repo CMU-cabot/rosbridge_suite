@@ -48,7 +48,7 @@ def encode(string):
     i = Image.frombytes("RGB", (int(width), int(height)), string_padded)
     buff = BytesIO()
     i.save(buff, "png")
-    encoded = standard_b64encode(buff.getvalue())
+    encoded = standard_b64encode(buff.getvalue()).decode("ascii")
     return encoded
 
 
