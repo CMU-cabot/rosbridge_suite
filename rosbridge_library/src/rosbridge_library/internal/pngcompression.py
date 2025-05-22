@@ -37,9 +37,12 @@ from math import ceil, floor, sqrt
 from PIL import Image
 
 
-def encode(string):
+def encode(string_or_data):
     """PNG-compress the string in a square RGB image padded with '\n', return the b64 encoded bytes"""
-    string_bytes = string.encode("utf-8")
+    if isinstance(string_or_data, str):
+        string_bytes = string_or_data.encode("utf-8")
+    else:
+        string_bytes = standard_b64encode(string_or_data)
     length = len(string_bytes)
     width = floor(sqrt(length / 3.0))
     height = ceil((length / 3.0) / width)
