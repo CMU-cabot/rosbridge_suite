@@ -193,6 +193,8 @@ class Subscription:
         self.compression = "none"
         if "png" in f("compression"):
             self.compression = "png"
+        if "png-cbor" in f("compression"):
+            self.compression = "png-cbor"
         if "cbor" in f("compression"):
             self.compression = "cbor"
         if "cbor-raw" in f("compression"):
@@ -314,6 +316,9 @@ class Subscribe(Capability):
             outgoing_msg["msg"] = message.get_json_values()
             outgoing_msg_dumped = encode_json(outgoing_msg)
             outgoing_msg = {"op": "png", "data": encode_png(outgoing_msg_dumped)}
+        elif compression == "png-cbor":
+            outgoing_msg = message.get_cbor(outgoing_msg)
+            outgoing_msg = {"op": "png-cbor", "data": encode_png(outgoing_msg)}
         elif compression == "cbor":
             outgoing_msg = message.get_cbor(outgoing_msg)
         elif compression == "cbor-raw":
